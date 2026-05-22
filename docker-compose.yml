@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  # --- BASE DE DATOS (PERSISTENCIA) ---
+  mysql-db:
+    image: mysql:8.0
+    container_name: innovatech-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: db_innovatech
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - innovatech-net
+
+  # --- MICROSERVICIO: VENTAS ---
+  back-ventas:
+    image: ${DOCKER_HUB_USERNAME}/back-ventas:latest
+    container_name: innovatech-back-ventas
+    restart: always
+    depends_on:
+      - mysql-db
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-db:3306/db_innovatech?allowPublicKeyRetrieval=true&useSSL=false
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=rootpassword
+    networks:
+      - innovatech-net
+
+  # --- MICROSERVICIO: DESPACHOS ---
+  back-despachos:
+    image: ${DOCKER_HUB_USERNAME}/back-despachos:latest
+    container_name: innovatech-back-despachos
+    restart: always
+    depends_on:
+      - mysql-db
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-db:3306/db_innovatech?allowPublicKeyRetrieval=true&useSSL=false
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=rootpassword
+    networks:
+      - innovatech-net
+
+  # --- COMPONENTE: FRONTEND ---
+  frontend:
+    image: ${DOCKER_HUB_USERNAME}/front-despachos:latest
+    container_name: innovatech-frontend
+    restart: always
+    depends_on:
+      - back-ventas
+      - back-despachos
+    ports:
+      - "8080:80"
+    networks:
+      - innovatech-net
+
+# --- VOLÚMENES Y REDES ---
+volumes:
+  db_data: # Aquí se cumple el criterio de persistencia estricta (IE3)
+
+networks:
+  innovatech-net:
+    driver: bridge
