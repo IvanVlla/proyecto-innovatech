@@ -31,7 +31,7 @@ jobs:
         username: ec2-user
         key: ${{ secrets.AWS_SSH_KEY }}
         script: |
-          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ec2-user@10.0.2.10 << 'EOF'
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ec2-user@10.0.128.158 << 'EOF'
             sudo docker pull ${{ secrets.DOCKERHUB_USERNAME }}/back-ventas:latest
             sudo docker stop back-ventas || true
             sudo docker rm back-ventas || true
