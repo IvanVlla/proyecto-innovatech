@@ -18,13 +18,15 @@ services:
 
   # --- MICROSERVICIO: VENTAS ---
   back-ventas:
-    image: ${DOCKER_HUB_USERNAME}/back-ventas:latest
+    build:
+      context: ./back-Ventas_SpringBoot/Springboot-API-REST
+      dockerfile: Dockerfile
     container_name: innovatech-back-ventas
     restart: always
     depends_on:
       - mysql-db
     ports:
-      - "8081:8081"
+      - "8081:8080"
     environment:
       - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-db:3306/db_innovatech?allowPublicKeyRetrieval=true&useSSL=false
       - SPRING_DATASOURCE_USERNAME=root
@@ -34,13 +36,15 @@ services:
 
   # --- MICROSERVICIO: DESPACHOS ---
   back-despachos:
-    image: ${DOCKER_HUB_USERNAME}/back-despachos:latest
+    build:
+      context: ./back-Despachos_SpringBoot/Springboot-API-REST-DESPACHO
+      dockerfile: Dockerfile
     container_name: innovatech-back-despachos
     restart: always
     depends_on:
       - mysql-db
     ports:
-      - "8082:8082"
+      - "8082:8080"
     environment:
       - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-db:3306/db_innovatech?allowPublicKeyRetrieval=true&useSSL=false
       - SPRING_DATASOURCE_USERNAME=root
@@ -50,20 +54,22 @@ services:
 
   # --- COMPONENTE: FRONTEND ---
   frontend:
-    image: ${DOCKER_HUB_USERNAME}/front-despachos:latest
+    build:
+      context: ./front_despacho
+      dockerfile: Dockerfile
     container_name: innovatech-frontend
     restart: always
     depends_on:
       - back-ventas
       - back-despachos
     ports:
-      - "8080:80"
+      - "80:80"
     networks:
       - innovatech-net
 
 # --- VOLÚMENES Y REDES ---
 volumes:
-  db_data: # Aquí se cumple el criterio de persistencia estricta (IE3)
+  db_data:
 
 networks:
   innovatech-net:
