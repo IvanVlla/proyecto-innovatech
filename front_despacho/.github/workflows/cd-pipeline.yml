@@ -1,0 +1,43 @@
+name: CD Frontend Deployment
+
+on:
+  push:
+    branches:
+      - deploy
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    # 1. Autenticación en Docker Hub
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    # 2. Construcción y Publicación de la imagen del Frontend (Usa el Dockerfile optimizado)
+    - name: Build and Push Docker Image
+      run: |
+        docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/front-despacho:latest -f Dockerfile .
+        docker push ${{ secrets.DOCKERHUB_USERNAME }}/front-despacho:latest
+
+    # 3. Despliegue directo a la EC2 Pública del Frontend mediante SSH
+    - name: Deploy to Frontend EC2
+      uses: appleboy/ssh-action@v0.1.10
+      with:
+        host: ${{ secrets.FRONTEND_PUBLIC_IP }} # IP Pública del Frontend
+        username: ec2-user
+        key: ${{ secrets.AWS_SSH_KEY }}         # Tu llave Innovatech.pem
+        script: |
+          docker stop front_despacho_app || true
+          docker rm front_despacho_app || true
+          docker pull ${{ secrets.DOCKERHUB_USERNAME }}/front-despacho:latest
+          docker run -d \
+            --name front_despacho_app \
+            -p 8080:8080 \
+            ${{ secrets.DOCKERHUB_USERNAME }}/front-despacho:latest
