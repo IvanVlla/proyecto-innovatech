@@ -25,15 +25,6 @@ jobs:
         docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/back-despachos:latest ./back-Despachos_SpringBoot/Springboot-API-REST-DESPACHO
         docker push ${{ secrets.DOCKERHUB_USERNAME }}/back-despachos:latest
 
-    - name: Copy Docker Compose to Frontend via SSH
-      uses: appleboy/scp-action@v0.1.4
-      with:
-        host: ${{ secrets.FRONTEND_PUBLIC_IP }}
-        username: ec2-user
-        key: ${{ secrets.AWS_SSH_KEY }}
-        source: "docker-compose.yml"
-        target: "/home/ec2-user/"
-
     - name: Deploy via SSH ProxyJump
       uses: appleboy/ssh-action@v0.1.10
       with:
@@ -41,10 +32,57 @@ jobs:
         username: ec2-user
         key: ${{ secrets.AWS_SSH_KEY }}
         script: |
+          # 1. Crear el directorio en la máquina privada pasando por el Front
           ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ec2-user@10.0.128.158 "mkdir -p ~/innovatech"
-          scp -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa /home/ec2-user/docker-compose.yml ec2-user@10.0.128.158:~/innovatech/docker-compose.yml
 
+          # 2. Escribir el archivo docker-compose.yml directamente en la máquina privada
           ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ec2-user@10.0.128.158 << 'EOF'
+            cat << 'COMPOSE' > ~/innovatech/docker-compose.yml
+          version: '3.8'
+
+          services:
+            back-ventas:
+              image: ${DOCKERHUB_USERNAME}/back-ventas:latest
+              container_name: innovatech-back-ventas
+              restart: always
+              ports:
+                - "8081:8081"
+              environment:
+                - SERVER_PORT=8081
+                - SPRING_DATASOURCE_URL=jdbc:mysql://10.0.128.66:3306/db_innovatech?allowPublicKeyRetrieval=true&useSSL=false
+                - SPRING_DATASOURCE_USERNAME=root
+                - SPRING_DATASOURCE_PASSWORD=rootpassword
+              volumes:
+                - ventas-logs:/app/logs
+              networks:
+                - innovatech-net
+
+            back-despachos:
+              image: ${DOCKERHUB_USERNAME}/back-despachos:latest
+              container_name: innovatech-back-despachos
+              restart: always
+              ports:
+                - "8082:8082"
+              environment:
+                - SERVER_PORT=8082
+                - SPRING_DATASOURCE_URL=jdbc:mysql://10.0.128.66:3306/db_innovatech?allowPublicKeyRetrieval=true&useSSL=false
+                - SPRING_DATASOURCE_USERNAME=root
+                - SPRING_DATASOURCE_PASSWORD=rootpassword
+              volumes:
+                - despachos-logs:/app/logs
+              networks:
+                - innovatech-net
+
+          volumes:
+            ventas-logs:
+            despachos-logs:
+
+          networks:
+            innovatech-net:
+              driver: bridge
+          COMPOSE
+
+            # 3. Desplegar el servicio correspondiente
             cd ~/innovatech
             DOCKERHUB_USERNAME="${{ secrets.DOCKERHUB_USERNAME }}" sudo -E docker compose pull back-despachos
             DOCKERHUB_USERNAME="${{ secrets.DOCKERHUB_USERNAME }}" sudo -E docker compose up -d back-despachos
