@@ -22,15 +22,15 @@ jobs:
     - name: Build and Push Docker Image with Build Args
       run: |
         docker build \
-          --build-arg VITE_API_BASE_URL_VENTAS=http://3.237.179.74:8081 \
-          --build-arg VITE_API_BASE_URL_DESPACHOS=http://3.237.179.74:8082 \
+          --build-arg VITE_API_BASE_URL_VENTAS=http://3.221.163.64:8081 \
+          --build-arg VITE_API_BASE_URL_DESPACHOS=http://3.221.163.64:8082 \
           -t ${{ secrets.DOCKERHUB_USERNAME }}/front-despacho:latest ./front_despacho
         docker push ${{ secrets.DOCKERHUB_USERNAME }}/front-despacho:latest
 
     - name: Deploy via SSH to Public EC2
       uses: appleboy/ssh-action@v0.1.10
       with:
-        host: ${{ secrets.FRONTEND_PUBLIC_IP }}
+        host: 3.221.163.64
         username: ec2-user
         key: ${{ secrets.AWS_SSH_KEY }}
         script: |
