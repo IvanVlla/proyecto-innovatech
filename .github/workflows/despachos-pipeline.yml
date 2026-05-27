@@ -41,16 +41,11 @@ jobs:
         username: ec2-user
         key: ${{ secrets.AWS_SSH_KEY }}
         script: |
-          # 1. Crear directorio del proyecto en la máquina privada back si no existe
           ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ec2-user@10.0.128.158 "mkdir -p ~/innovatech"
-
-          # 2. Copiar el archivo docker-compose.yml desde el Front hacia la máquina privada back
           scp -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa /home/ec2-user/docker-compose.yml ec2-user@10.0.128.158:~/innovatech/docker-compose.yml
 
-          # 3. Levantar el microservicio de Despachos usando Docker Compose
           ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ec2-user@10.0.128.158 << 'EOF'
             cd ~/innovatech
-            export DOCKERHUB_USERNAME="${{ secrets.DOCKERHUB_USERNAME }}"
-            sudo docker compose pull back-despachos
-            sudo docker compose up -d back-despachos
+            DOCKERHUB_USERNAME="${{ secrets.DOCKERHUB_USERNAME }}" sudo -E docker compose pull back-despachos
+            DOCKERHUB_USERNAME="${{ secrets.DOCKERHUB_USERNAME }}" sudo -E docker compose up -d back-despachos
           EOF
