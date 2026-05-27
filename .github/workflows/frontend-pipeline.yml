@@ -34,21 +34,18 @@ jobs:
         username: ec2-user
         key: ${{ secrets.AWS_SSH_KEY }}
         script: |
-          # Forzar la remoción de cualquier contenedor viejo que use el nombre
+          # 1. Detener y remover el contenedor de docker si ya existe
           sudo docker stop innovatech-front || true
           sudo docker rm innovatech-front || true
-          
-          # Detener CUALQUIER contenedor que esté ocupando el puerto 80 para evitar el bind error
-          PID_PORT_80=$(sudo docker ps -q --filter "publish=80")
-          if [ ! -z "$PID_PORT_80" ]; then
-            sudo docker stop $PID_PORT_80 || true
-            sudo docker rm $PID_PORT_80 || true
-          fi
 
-          # Descargar la última versión de la imagen
+          # 2. Matar CUALQUIER proceso del sistema operativo (como un nginx nativo) que use el puerto 80
+          sudo fuser -k 80/tcp || true
+          sudo systemctl stop nginx || true
+
+          # 3. Descargar la versión fresca
           sudo docker pull ${{ secrets.DOCKERHUB_USERNAME }}/front-despacho:latest
-          
-          # Levantar el contenedor limpio en el puerto 80
+
+          # 4. Levantar el contenedor en el puerto 80 limpio
           sudo docker run -d \
             --name innovatech-front \
             --restart always \
