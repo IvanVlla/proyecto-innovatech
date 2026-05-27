@@ -31,12 +31,13 @@ jobs:
         host: ${{ secrets.FRONTEND_PUBLIC_IP }}
         username: ec2-user
         key: ${{ secrets.AWS_SSH_KEY }}
+        sync: true
         script: |
-          # 1. Crear el directorio en la máquina privada pasando por el Front
-          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ec2-user@10.0.128.158 "mkdir -p ~/innovatech"
+          # 1. Crear el directorio en la máquina privada pasando por el Front evitando chequeo de llaves antiguas
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/.ssh/id_rsa ec2-user@10.0.128.158 "mkdir -p ~/innovatech"
 
           # 2. Escribir el archivo docker-compose.yml directamente en la máquina privada
-          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ec2-user@10.0.128.158 << 'EOF'
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/.ssh/id_rsa ec2-user@10.0.128.158 << 'EOF'
             cat << 'COMPOSE' > ~/innovatech/docker-compose.yml
           version: '3.8'
 
