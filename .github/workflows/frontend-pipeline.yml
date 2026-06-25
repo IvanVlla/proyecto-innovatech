@@ -1,4 +1,4 @@
-name: CD Frontend Public Deployment
+name: CD Frontend Deployment
 
 on:
   push:
@@ -19,35 +19,36 @@ jobs:
     - name: Login to Docker Hub
       run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-    - name: Build and Push Docker Image with Build Args
+    - name: Build and Push Frontend Image
       run: |
-        docker build \
-          --build-arg VITE_API_BASE_URL_VENTAS=http://3.221.163.64:8081 \
-          --build-arg VITE_API_BASE_URL_DESPACHOS=http://3.221.163.64:8082 \
-          -t ${{ secrets.DOCKERHUB_USERNAME }}/front-despacho:latest ./front_despacho
+        docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/front-despacho:latest ./front_despacho
         docker push ${{ secrets.DOCKERHUB_USERNAME }}/front-despacho:latest
 
-    - name: Deploy via SSH to Public EC2
+    - name: Deploy to Frontend Instance (Public)
       uses: appleboy/ssh-action@v0.1.10
       with:
-        host: 3.221.163.64
+        host: ${{ secrets.FRONTEND_PUBLIC_IP }}
         username: ec2-user
         key: ${{ secrets.AWS_SSH_KEY }}
         script: |
-          # 1. Detener y remover el contenedor de docker si ya existe
-          sudo docker stop innovatech-front || true
-          sudo docker rm innovatech-front || true
+          mkdir -p ~/innovatech-front
+          cd ~/innovatech-front
 
-          # 2. Matar CUALQUIER proceso del sistema operativo (como un nginx nativo) que use el puerto 80
-          sudo fuser -k 80/tcp || true
-          sudo systemctl stop nginx || true
+          # Crear el docker-compose local para el Frontend
+          cat << 'EOF' > docker-compose.yml
+          version: '3.8'
 
-          # 3. Descargar la versión fresca
-          sudo docker pull ${{ secrets.DOCKERHUB_USERNAME }}/front-despacho:latest
+          services:
+            frontend:
+              image: ${{ secrets.DOCKERHUB_USERNAME }}/front-despacho:latest
+              container_name: innovatech-front-despacho
+              restart: always
+              ports:
+                - "80:80"
+              environment:
+                - REACT_APP_API_VENTAS_URL=http://18.214.44.59:8081
+                - REACT_APP_API_DESPACHOS_URL=http://18.214.44.59:8082
+          EOF
 
-          # 4. Levantar el contenedor en el puerto 80 limpio
-          sudo docker run -d \
-            --name innovatech-front \
-            --restart always \
-            -p 80:8080 \
-            ${{ secrets.DOCKERHUB_USERNAME }}/front-despacho:latest
+          sudo docker compose pull
+          sudo docker compose up -d
