@@ -33,11 +33,11 @@ jobs:
         key: ${{ secrets.AWS_SSH_KEY }}
         sync: true
         script: |
-          # 1. Crear el directorio en la máquina Backend (10.0.142.7) pasando por el Front
-          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/.ssh/id_rsa ec2-user@10.0.142.7 "mkdir -p ~/innovatech"
+          # 1. Crear el directorio en la máquina Backend (10.0.142.7) pasando por el Front usando tu llave
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/.ssh/Llave-Innovatech.pem ec2-user@10.0.142.7 "mkdir -p ~/innovatech"
 
           # 2. Escribir el archivo docker-compose.yml en la máquina Backend apuntando a la Data (10.0.155.105)
-          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/.ssh/id_rsa ec2-user@10.0.142.7 << 'EOF'
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/.ssh/Llave-Innovatech.pem ec2-user@10.0.142.7 << 'EOF'
             cat << 'COMPOSE' > ~/innovatech/docker-compose.yml
           version: '3.8'
 
