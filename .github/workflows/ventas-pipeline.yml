@@ -22,7 +22,7 @@ jobs:
 
     - name: Build and Push Docker Image
       run: |
-        docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/back-ventas:latest ./back-Ventas_SpringBoot/Springboot-API-REST-VENTAS
+        docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/back-ventas:latest ./back-Ventas_SpringBoot/Springboot-API-REST
         docker push ${{ secrets.DOCKERHUB_USERNAME }}/back-ventas:latest
 
     - name: Deploy via SSH ProxyJump
