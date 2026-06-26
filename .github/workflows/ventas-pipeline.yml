@@ -33,59 +33,31 @@ jobs:
         key: ${{ secrets.AWS_SSH_KEY }}
         sync: true
         script: |
-          # 1. Crear el directorio en la máquina Backend (10.0.142.7) pasando por el Front usando tu llave
-          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/.ssh/Llave-Innovatech.pem ec2-user@10.0.142.7 "mkdir -p ~/innovatech"
+          # 1. Crear red de docker si no existe en el Backend
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/.ssh/Llave-Innovatech.pem ec2-user@10.0.142.7 "docker network create innovatech-net || true"
 
-          # 2. Escribir el archivo docker-compose.yml en la máquina Backend apuntando a la Data (10.0.155.105)
+          # 2. Desplegar de forma directa con Docker Run en el Backend
           ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/.ssh/Llave-Innovatech.pem ec2-user@10.0.142.7 << 'EOF'
-          cat << 'COMPOSE' > ~/innovatech/docker-compose.yml
-          version: '3.8'
+          # Autenticarse en Docker Hub desde el Backend
+          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-          services:
-            back-ventas:
-              image: ${{ secrets.DOCKERHUB_USERNAME }}/back-ventas:latest
-              container_name: innovatech-back-ventas
-              restart: always
-              ports:
-                - "8081:8081"
-              environment:
-                - SERVER_PORT=8081
-                - SPRING_DATASOURCE_URL=jdbc:postgresql://10.0.155.105:5432/db_innovatech
-                - SPRING_DATASOURCE_USERNAME=root
-                - SPRING_DATASOURCE_PASSWORD=rootpassword
-              volumes:
-                - ventas-logs:/app/logs
-              networks:
-                - innovatech-net
+          # Detener y borrar contenedor anterior si existe
+          docker stop innovatech-back-ventas || true
+          docker rm innovatech-back-ventas || true
 
-            back-despachos:
-              image: ${{ secrets.DOCKERHUB_USERNAME }}/back-despachos:latest
-              container_name: innovatech-back-despachos
-              restart: always
-              ports:
-                - "8082:8082"
-              environment:
-                - SERVER_PORT=8082
-                - SPRING_DATASOURCE_URL=jdbc:postgresql://10.0.155.105:5432/db_innovatech
-                - SPRING_DATASOURCE_USERNAME=root
-                - SPRING_DATASOURCE_PASSWORD=rootpassword
-              volumes:
-                - despachos-logs:/app/logs
-              networks:
-                - innovatech-net
+          # Descargar última imagen
+          docker pull ${{ secrets.DOCKERHUB_USERNAME }}/back-ventas:latest
 
-          volumes:
-            ventas-logs:
-            despachos-logs:
-
-          networks:
-            innovatech-net:
-              driver: bridge
-          COMPOSE
-
-          # 3. Desplegar el servicio correspondiente en el Backend
-          cd ~/innovatech
-          docker compose pull back-ventas
-          docker compose down back-ventas || true
-          docker compose up -d back-ventas
+          # Correr el contenedor con sus variables correspondientes
+          docker run -d \
+            --name innovatech-back-ventas \
+            --restart always \
+            -p 8081:8081 \
+            --network innovatech-net \
+            -e SERVER_PORT=8081 \
+            -e SPRING_DATASOURCE_URL=jdbc:postgresql://10.0.155.105:5432/db_innovatech \
+            -e SPRING_DATASOURCE_USERNAME=root \
+            -e SPRING_DATASOURCE_PASSWORD=rootpassword \
+            -v ventas-logs:/app/logs \
+            ${{ secrets.DOCKERHUB_USERNAME }}/back-ventas:latest
           EOF
