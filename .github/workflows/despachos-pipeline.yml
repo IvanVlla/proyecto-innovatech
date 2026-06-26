@@ -33,23 +33,23 @@ jobs:
         key: ${{ secrets.AWS_SSH_KEY }}
         sync: true
         script: |
-          # 1. Crear red de docker si no existe en el Backend
-          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/.ssh/Llave-Innovatech.pem ec2-user@10.0.142.7 "docker network create innovatech-net || true"
+          # 1. Crear red de docker si no existe en el Backend (con sudo)
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/.ssh/Llave-Innovatech.pem ec2-user@10.0.142.7 "sudo docker network create innovatech-net || true"
 
           # 2. Desplegar de forma directa con Docker Run en el Backend
           ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/.ssh/Llave-Innovatech.pem ec2-user@10.0.142.7 << 'EOF'
-          # Autenticarse en Docker Hub desde el Backend
-          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+          # Autenticarse en Docker Hub desde el Backend con sudo
+          echo "${{ secrets.DOCKERHUB_TOKEN }}" | sudo docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-          # Detener y borrar contenedor anterior si existe
-          docker stop innovatech-back-despachos || true
-          docker rm innovatech-back-despachos || true
+          # Detener y borrar contenedor anterior si existe con sudo
+          sudo docker stop innovatech-back-despachos || true
+          sudo docker rm innovatech-back-despachos || true
 
-          # Descargar última imagen
-          docker pull ${{ secrets.DOCKERHUB_USERNAME }}/back-despachos:latest
+          # Descargar última imagen con sudo
+          sudo docker pull ${{ secrets.DOCKERHUB_USERNAME }}/back-despachos:latest
 
-          # Correr el contenedor con sus variables correspondientes
-          docker run -d \
+          # Correr el contenedor con sus variables correspondientes con sudo
+          sudo docker run -d \
             --name innovatech-back-despachos \
             --restart always \
             -p 8082:8082 \
