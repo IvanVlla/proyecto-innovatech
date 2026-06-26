@@ -41,11 +41,11 @@ jobs:
           # Forzar descarga de la última versión
           sudo docker pull ${{ secrets.DOCKERHUB_USERNAME }}/front-despacho:latest
 
-          # Levantar el contenedor mapeando el puerto 80 nativo
+          # Levantar el contenedor mapeando el puerto 80 externo al 8080 interno de la imagen
           sudo docker run -d \
             --name innovatech-front-despacho \
             --restart always \
-            -p 80:80 \
+            -p 80:8080 \
             -e REACT_APP_API_VENTAS_URL=http://18.214.44.59:8081 \
             -e REACT_APP_API_DESPACHOS_URL=http://18.214.44.59:8082 \
             ${{ secrets.DOCKERHUB_USERNAME }}/front-despacho:latest
