@@ -38,7 +38,7 @@ jobs:
 
           # 2. Escribir el archivo docker-compose.yml en la máquina Backend apuntando a la Data (10.0.155.105)
           ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/.ssh/Llave-Innovatech.pem ec2-user@10.0.142.7 << 'EOF'
-            cat << 'COMPOSE' > ~/innovatech/docker-compose.yml
+          cat << 'COMPOSE' > ~/innovatech/docker-compose.yml
           version: '3.8'
 
           services:
@@ -83,8 +83,8 @@ jobs:
               driver: bridge
           COMPOSE
 
-            # 3. Desplegar el servicio correspondiente en el Backend
-            cd ~/innovatech
-            sudo docker compose pull back-ventas
-            sudo docker compose up -d back-ventas
+          # 3. Desplegar el servicio correspondiente en el Backend
+          cd ~/innovatech
+          sudo docker-compose pull back-ventas
+          sudo docker-compose up -d back-ventas
           EOF
