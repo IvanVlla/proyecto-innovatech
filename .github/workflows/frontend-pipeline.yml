@@ -31,24 +31,21 @@ jobs:
         username: ec2-user
         key: ${{ secrets.AWS_SSH_KEY }}
         script: |
-          mkdir -p ~/innovatech-front
-          cd ~/innovatech-front
+          # Autenticarse en Docker Hub en la máquina pública
+          echo "${{ secrets.DOCKERHUB_TOKEN }}" | sudo docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-          # Crear el docker-compose local para el Frontend
-          cat << 'EOF' > docker-compose.yml
-          version: '3.8'
+          # Detener y limpiar contenedor anterior si existe
+          sudo docker stop innovatech-front-despacho || true
+          sudo docker rm innovatech-front-despacho || true
 
-          services:
-            frontend:
-              image: ${{ secrets.DOCKERHUB_USERNAME }}/front-despacho:latest
-              container_name: innovatech-front-despacho
-              restart: always
-              ports:
-                - "80:80"
-              environment:
-                - REACT_APP_API_VENTAS_URL=http://18.214.44.59:8081
-                - REACT_APP_API_DESPACHOS_URL=http://18.214.44.59:8082
-          EOF
+          # Forzar descarga de la última versión
+          sudo docker pull ${{ secrets.DOCKERHUB_USERNAME }}/front-despacho:latest
 
-          sudo docker compose pull
-          sudo docker compose up -d
+          # Levantar el contenedor mapeando el puerto 80 nativo
+          sudo docker run -d \
+            --name innovatech-front-despacho \
+            --restart always \
+            -p 80:80 \
+            -e REACT_APP_API_VENTAS_URL=http://18.214.44.59:8081 \
+            -e REACT_APP_API_DESPACHOS_URL=http://18.214.44.59:8082 \
+            ${{ secrets.DOCKERHUB_USERNAME }}/front-despacho:latest
