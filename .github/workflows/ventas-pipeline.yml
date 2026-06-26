@@ -85,7 +85,7 @@ jobs:
 
           # 3. Desplegar el servicio correspondiente en el Backend
           cd ~/innovatech
-          sudo docker-compose pull back-ventas
-          sudo docker-compose down back-ventas || true
-          sudo docker-compose up -d back-ventas
+          docker compose pull back-ventas
+          docker compose down back-ventas || true
+          docker compose up -d back-ventas
           EOF

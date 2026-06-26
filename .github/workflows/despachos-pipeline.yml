@@ -85,7 +85,7 @@ jobs:
 
           # 3. Desplegar el servicio correspondiente en el Backend
           cd ~/innovatech
-          sudo docker-compose pull back-despachos
-          sudo docker-compose down back-despachos || true
-          sudo docker-compose up -d back-despachos
+          docker compose pull back-despachos
+          docker compose down back-despachos || true
+          docker compose up -d back-despachos
           EOF
