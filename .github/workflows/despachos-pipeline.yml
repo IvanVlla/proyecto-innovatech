@@ -17,47 +17,27 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v3
 
-    - name: Login to Docker Hub (Native)
-      run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-
-    - name: Build and Push Docker Image
-      run: |
-        docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/back-despachos:latest ./back-Despachos_SpringBoot/Springboot-API-REST-DESPACHO
-        docker push ${{ secrets.DOCKERHUB_USERNAME }}/back-despachos:latest
-
-    - name: Deploy via SSH ProxyJump
-      uses: appleboy/ssh-action@v0.1.10
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v2
       with:
-        host: ${{ secrets.FRONTEND_PUBLIC_IP }}
-        username: ec2-user
-        key: ${{ secrets.AWS_SSH_KEY }}
-        sync: true
-        script: |
-          # 1. Crear red de docker si no existe en el Backend (con sudo)
-          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/.ssh/Llave-Innovatech.pem ec2-user@10.0.142.7 "sudo docker network create innovatech-net || true"
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+        aws-region: us-east-1
 
-          # 2. Desplegar de forma directa con Docker Run en el Backend
-          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/.ssh/Llave-Innovatech.pem ec2-user@10.0.142.7 << 'EOF'
-          # Autenticarse en Docker Hub desde el Backend con sudo
-          echo "${{ secrets.DOCKERHUB_TOKEN }}" | sudo docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
 
-          # Detener y borrar contenedor anterior si existe con sudo
-          sudo docker stop innovatech-back-despachos || true
-          sudo docker rm innovatech-back-despachos || true
+    - name: Build, Tag, and Push Image to Amazon ECR
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: innovatech-backend-despachos
+        IMAGE_TAG: latest
+      run: |
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./back-Despachos_SpringBoot/Springboot-API-REST-DESPACHO
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
-          # Descargar última imagen con sudo
-          sudo docker pull ${{ secrets.DOCKERHUB_USERNAME }}/back-despachos:latest
-
-          # Correr el contenedor con sus variables correspondientes con sudo
-          sudo docker run -d \
-            --name innovatech-back-despachos \
-            --restart always \
-            -p 8082:8082 \
-            --network innovatech-net \
-            -e SERVER_PORT=8082 \
-            -e SPRING_DATASOURCE_URL=jdbc:postgresql://10.0.155.105:5432/db_innovatech \
-            -e SPRING_DATASOURCE_USERNAME=root \
-            -e SPRING_DATASOURCE_PASSWORD=rootpassword \
-            -v despachos-logs:/app/logs \
-            ${{ secrets.DOCKERHUB_USERNAME }}/back-despachos:latest
-          EOF
+    - name: Force ECS Deployment
+      run: |
+        aws ecs update-service --cluster innovatech-cluster --service innovatech-despachos-service --force-new-deployment --region us-east-1

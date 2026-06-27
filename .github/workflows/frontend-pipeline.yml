@@ -16,36 +16,27 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v3
 
-    - name: Login to Docker Hub
-      run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-
-    - name: Build and Push Frontend Image
-      run: |
-        docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/front-despacho:latest ./front_despacho
-        docker push ${{ secrets.DOCKERHUB_USERNAME }}/front-despacho:latest
-
-    - name: Deploy to Frontend Instance (Public)
-      uses: appleboy/ssh-action@v0.1.10
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v2
       with:
-        host: ${{ secrets.FRONTEND_PUBLIC_IP }}
-        username: ec2-user
-        key: ${{ secrets.AWS_SSH_KEY }}
-        script: |
-          # Autenticarse en Docker Hub en la máquina pública
-          echo "${{ secrets.DOCKERHUB_TOKEN }}" | sudo docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+        aws-region: us-east-1
 
-          # Detener y limpiar contenedor anterior si existe
-          sudo docker stop innovatech-front-despacho || true
-          sudo docker rm innovatech-front-despacho || true
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
 
-          # Forzar descarga de la última versión
-          sudo docker pull ${{ secrets.DOCKERHUB_USERNAME }}/front-despacho:latest
+    - name: Build, Tag, and Push Frontend Image to Amazon ECR
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: innovatech-frontend
+        IMAGE_TAG: latest
+      run: |
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./front_despacho
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
-          # Levantar el contenedor mapeando el puerto 80 externo al 8080 interno de la imagen
-          sudo docker run -d \
-            --name innovatech-front-despacho \
-            --restart always \
-            -p 80:8080 \
-            -e REACT_APP_API_VENTAS_URL=http://18.214.44.59:8081 \
-            -e REACT_APP_API_DESPACHOS_URL=http://18.214.44.59:8082 \
-            ${{ secrets.DOCKERHUB_USERNAME }}/front-despacho:latest
+    - name: Force ECS Deployment
+      run: |
+        aws ecs update-service --cluster innovatech-cluster --service innovatech-frontend-service --force-new-deployment --region us-east-1
